@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BlinkVoice: Eye Communication</title>
+    <style>
+      :root { --fs: 1; --bg:#f1f5f9; --card:#fff; --ink:#0f172a; --muted:#64748b; --brand:#2563eb; --dark:#0f2557; --ok:#16a34a; --line:#e2e8f0; --tint:#eff6ff; --key:#fff; --sugbg:#f8fafc; --back:#f1f5f9; --stat:#f8fafc; --sosbg:#fee2e2; --sosline:#fca5a5; }
+      body.dark { --bg:#0b1220; --card:#111c33; --ink:#f1f5f9; --muted:#94a3b8; --line:#2b3a57; --tint:#172554; --key:#1a2744; --sugbg:#16213a; --back:#1f2c4a; --stat:#16213a; --sosbg:#7f1d1d; --sosline:#b91c1c; --dark:#020617; }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; margin: 0; overflow: hidden; }
+      body { font-family: "Segoe UI", Tahoma, system-ui, sans-serif; background: var(--bg); color: var(--ink); display: flex; flex-direction: column; }
+      header { flex: 0 0 56px; background: var(--dark); color: #fff; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+      .logo { font-size: 20px; font-weight: 700; line-height: 1.1; white-space: nowrap; }
+      .logo small { display: block; font-size: 11px; font-weight: 400; opacity: .75; }
+      .tags { display: flex; gap: 6px; align-items: center; flex-wrap: nowrap; }
+      .tag { padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; background: #334155; color: #fff; border: 0; white-space: nowrap; }
+      button.tag { cursor: pointer; }
+      button.tag:hover { background: #475569; }
+      #pill.scan { background: var(--brand); } #pill.wait { background: var(--ok); } #pill.warn { background: #dc2626; }
+
+      main { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 250px; gap: 14px; padding: 14px 20px; }
+      .panel { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; box-shadow: 0 2px 8px rgba(15,23,42,.05); }
+      .label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 4px; }
+
+      #left { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+      #msgPanel { flex: 0 0 auto; }
+      #output { font-size: calc(clamp(22px, 4vh, 36px) * var(--fs)); font-weight: 600; height: calc(11vh + (var(--fs) - 1) * 12vh); overflow: hidden; line-height: 1.25; word-break: break-word; }
+      #output.empty { color: var(--muted); opacity: .55; font-weight: 400; }
+      .caret { display: inline-block; width: 3px; height: 1em; background: var(--brand); vertical-align: middle; margin-left: 2px; animation: blink 1s steps(1) infinite; }
+      @keyframes blink { 50% { opacity: 0; } }
+      #toast { color: var(--ok); font-weight: 600; height: 20px; font-size: 14px; overflow: hidden; white-space: nowrap; }
+      #blinkwrap { flex: 0 0 8px; background: var(--line); border-radius: 6px; overflow: hidden; }
+      #blinkfill { height: 100%; width: 0%; background: var(--brand); }
+
+      #kbPanel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+      #kb { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
+      .row { flex: 1; min-height: 0; display: flex; gap: 8px; padding: 5px; border: 3px solid transparent; border-radius: 14px; }
+      .row.active-row { background: var(--tint); border-color: var(--brand); }
+      .row.linear { display: grid; grid-template-columns: repeat(5, 1fr); grid-auto-rows: 1fr; }
+      .key { flex: 1; min-width: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-size: calc(clamp(15px, 3vh, 28px) * var(--fs)); font-weight: 600; background: var(--key); border: 2px solid var(--line); border-radius: 12px; transition: transform .12s; }
+      .key small { font-size: calc(clamp(11px, 1.8vh, 15px) * var(--fs)); font-weight: 400; color: var(--muted); }
+      .key.sug { font-size: calc(clamp(14px, 2.5vh, 22px) * var(--fs)); background: var(--sugbg); }
+      .key.wide { flex: 2; }
+      .key.back { flex: 0 0 48px; color: var(--muted); background: var(--back); }
+      .key.sos { background: var(--sosbg); border-color: var(--sosline); }
+      .key.active { background: var(--brand); color: #fff; border-color: var(--brand); transform: scale(1.04); }
+      .key.active small { color: #dbeafe; }
+      .key.sos.active { background: #dc2626; border-color: #dc2626; }
+
+      aside { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+      #cam { width: 100%; border-radius: 10px; transform: scaleX(-1); background: #000; display: block; }
+      .privacy { font-size: 11px; color: var(--muted); margin-top: 6px; }
+      .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+      .stat { background: var(--stat); border-radius: 10px; padding: 6px; text-align: center; }
+      .stat b { display: block; font-size: 20px; }
+      .stat span { font-size: 10px; color: var(--muted); text-transform: uppercase; }
+      #history { list-style: none; margin: 0; padding: 0; font-size: 13px; overflow: hidden; }
+      #history li { padding: 4px 0; border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      #histPanel { flex: 1; min-height: 0; overflow: hidden; }
+
+      /* overlays */
+      .overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; flex-direction: column; text-align: center; z-index: 50; padding: 20px; color: #fff; }
+      #start { display: flex; background: #0f2557; }
+      #start h1 { font-size: 40px; margin: 0 0 6px; }
+      #start p { opacity: .8; margin: 0 0 22px; }
+      #start label { display: block; text-align: left; font-size: 13px; margin: 8px 0 3px; opacity: .85; }
+      #start input { width: 320px; padding: 10px 12px; border-radius: 10px; border: 0; font-size: 18px; }
+      #startBtn { margin-top: 22px; padding: 16px 48px; font-size: 22px; font-weight: 700; border: 0; border-radius: 14px; background: #22c55e; color: #fff; cursor: pointer; }
+      #alert { background: #dc2626; animation: flash .6s steps(1) infinite; z-index: 60; }
+      @keyframes flash { 50% { background: #7f1d1d; } }
+      #alert h1 { font-size: 64px; margin: 0; }
+      #alert p { font-size: 28px; margin: 10px 0 24px; }
+      #alert a, #alert button, #confirm button, #calib button { font-size: 24px; font-weight: 700; padding: 14px 34px; border-radius: 14px; border: 0; margin: 6px; cursor: pointer; text-decoration: none; }
+      #callLink { background: #fff; color: #b91c1c; }
+      #dismiss { background: #111827; color: #fff; }
+      #confirm { background: #c2410c; z-index: 70; }
+      #confirm h1 { font-size: 44px; margin: 0; }
+      #confirmNum { font-size: 150px; font-weight: 800; line-height: 1; margin: 6px 0; }
+      #confirm p { font-size: 22px; margin: 4px 0 14px; max-width: 700px; }
+      #cancelBtn { background: #fff; color: #9a3412; }
+      #calib { background: rgba(15,37,87,.97); z-index: 80; }
+      #calib h1 { font-size: 40px; margin: 0 0 10px; }
+      #calib p { font-size: 22px; max-width: 700px; margin: 0 0 12px; opacity: .9; }
+      #calCount { font-size: 120px; font-weight: 800; line-height: 1; }
+      #calSkip { background: #334155; color: #fff; font-size: 16px !important; padding: 10px 22px !important; margin-top: 18px !important; }
+    </style>
+  </head>
+  <body>
+    <div id="start" class="overlay">
+      <h1>BlinkVoice</h1>
+      <p>Eye-controlled communication aid</p>
+      <div>
+        <label>Emergency number (SOS / Help)</label>
+        <input id="sosNum" placeholder="e.g. 1122 ya 0300xxxxxxx" />
+        <label>Family number</label>
+        <input id="famNum" placeholder="e.g. 0300xxxxxxx" />
+      </div>
+      <button id="startBtn">▶ Start</button>
+      <p style="margin-top:14px;font-size:14px">Pehli baar 8 second ki calibration khud chalegi.</p>
+    </div>
+
+    <div id="calib" class="overlay">
+      <h1 id="calTitle">Calibration</h1>
+      <p id="calText"></p>
+      <div id="calCount">3</div>
+      <button id="calSkip">Skip (default use karo)</button>
+    </div>
+
+    <div id="confirm" class="overlay">
+      <h1>⚠ <span id="confirmWho">SOS</span></h1>
+      <div id="confirmNum">5</div>
+      <p>Galti se select hua? Cancel karne ke liye <b>aankhein band karo</b>, <b>Space / Esc</b> dabao, ya neeche button dabao.<br>Ghalti se nahi to kuch mat karo, alert khud chala jayega.</p>
+      <button id="cancelBtn">✖ Cancel</button>
+    </div>
+
+    <div id="alert" class="overlay">
+      <h1>🚨 EMERGENCY 🚨</h1>
+      <p id="alertText">Calling for help...</p>
+      <div>
+        <a id="callLink" href="#">📞 Call now</a>
+        <button id="dismiss">Dismiss</button>
+      </div>
+    </div>
+
+    <header>
+      <div class="logo">BlinkVoice <small>Eye-controlled communication aid</small></div>
+      <div class="tags">
+        <button class="tag" id="testVoice" title="Awaaz test">🔊 Test</button>
+        <button class="tag" id="calBtn" title="Blink calibration dobara karo">🎯 Calibrate</button>
+        <button class="tag" id="langBtn" title="Language">🌐 اردو / EN</button>
+        <button class="tag" id="darkBtn" title="Dark mode">🌙 Dark</button>
+        <button class="tag" id="sizeBtn" title="Text size">Aa Normal</button>
+        <div class="tag" id="modeTag">Quick phrases</div>
+        <div class="tag" id="pill">Loading...</div>
+      </div>
+    </header>
+
+    <main>
+      <section id="left">
+        <div class="panel" id="msgPanel">
+          <div class="label">Message</div>
+          <div id="output"></div>
+          <div id="toast"></div>
+        </div>
+        <div id="blinkwrap"><div id="blinkfill"></div></div>
+        <div class="panel" id="kbPanel"><div id="kb"></div></div>
+      </section>
+
+      <aside>
+        <div class="panel">
+          <div class="label">Camera</div>
+          <video id="cam" autoplay playsinline muted></video>
+          <div class="privacy">🔒 Video sirf is device par process hoti hai.</div>
+        </div>
+        <div class="panel">
+          <div class="label">Session stats</div>
+          <div class="stats">
+            <div class="stat"><b id="sWpm">0</b><span>Words / min</span></div>
+            <div class="stat"><b id="sSaved">0</b><span>Blinks saved</span></div>
+            <div class="stat"><b id="sChars">0</b><span>Letters</span></div>
+            <div class="stat"><b id="sSent">0</b><span>Spoken</span></div>
+          </div>
+        </div>
+        <div class="panel" id="histPanel">
+          <div class="label">Spoken history</div>
+          <ul id="history"></ul>
+        </div>
+      </aside>
+    </main>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
