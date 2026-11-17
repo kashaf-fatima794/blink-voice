@@ -4,6 +4,7 @@
 **Giving everyone a voice, one blink at a time.**
 
 **Team:** Bit Wizard  
+**Team members:** kashaf fatima , sidra sajjad , sadia mazher  
 **Event:** Minhaj University Lahore, STCS AI Hackathon & Startup Pitch 2026  
 **Niche:** AI for Accessible Healthcare & Well-Being (UN SDG 3: Good Health and Well-Being)
 
